@@ -9,6 +9,8 @@ void ShapesUpdate(void) {
     float t = (float)GetTime();
     Vector2 mouse = GetMousePosition();
     Vector2 spline[6] = {{120, 770}, {390, 560}, {650, 850}, {930, 600}, {1260, 820}, {1540, 610}};
+    float sectorStart = t * 25.0f;
+    float sectorSweep = 180.0f + Sin(t * 1.4f) * 135.0f;
     BeginDrawing();
     ClearBackground((Color){8, 12, 24, 255});
     DrawRectangleGradientV(0, 0, 1920, 1080, (Color){20, 28, 54, 255}, (Color){5, 8, 17, 255});
@@ -20,8 +22,8 @@ void ShapesUpdate(void) {
     DrawRectangleRoundedLinesEx((Rectangle){450, 220, 300, 220}, .2f, 16, 5, RAYWHITE);
     DrawPoly((Vector2){930, 330}, 6, 120, t * 30.0f, (Color){100, 210, 255, 220});
     DrawPolyLinesEx((Vector2){930, 330}, 6, 120, t * 30.0f, 6, WHITE);
-    DrawCircleSector((Vector2){1230, 330}, 120, -30, t * 45.0f, 40, (Color){100, 255, 170, 220});
-    DrawCircleSectorLines((Vector2){1230, 330}, 120, -30, t * 45.0f, 40, WHITE);
+    DrawCircleSector((Vector2){1230, 330}, 120, sectorStart, sectorStart + sectorSweep, 40, (Color){100, 255, 170, 220});
+    DrawCircleSectorLines((Vector2){1230, 330}, 120, sectorStart, sectorStart + sectorSweep, 40, WHITE);
     DrawRectanglePro((Rectangle){1515, 330, 210, 110}, (Vector2){105, 55}, t * 32.0f, (Color){255, 120, 85, 230});
     BeginBlendMode(BLEND_ADDITIVE);
     for (int i = 0; i < 8; i++) DrawCircle(1530 + i * 30, 520 + (int)(Sin(t * 3 + i) * 35), 48, (Color){40 + i * 20, 100, 255 - i * 20, 80});
