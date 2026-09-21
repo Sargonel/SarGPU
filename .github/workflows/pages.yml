@@ -36,12 +36,23 @@ jobs:
             -Wl,-z,stack-size=1048576 \
             -Wl,--initial-memory=67108864 \
             -Wl,--max-memory=2147483648 \
-            examples/main.c examples/snake.c examples/basic_3d.c src/sargpu.c \
+            examples/main.c \
+            examples/snake.c \
+            examples/basic_3d.c \
+            examples/shapes.c \
+            examples/text_demo.c \
+            examples/images.c \
+            examples/render_fx.c \
+            examples/camera_2d.c \
+            examples/audio_demo.c \
+            examples/particles.c \
+            examples/lighting_3d.c \
+            src/sargpu.c \
             -o dist/main.wasm
           cp shell.html dist/index.html
           cp src/sargpu.js dist/sargpu.js
           mkdir -p dist/examples/assets
-          cp examples/assets/example.glb dist/examples/assets/example.glb
+          cp -R examples/assets/. dist/examples/assets/
           sed -i "s|sargpu.js|sargpu.js?rev=${GITHUB_SHA}|" dist/index.html
           sed -i "s|fetch(\"main.wasm\")|fetch(\"main.wasm?rev=${GITHUB_SHA}\", { cache: \"no-cache\" })|" dist/sargpu.js
           touch dist/.nojekyll
