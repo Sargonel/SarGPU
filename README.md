@@ -7,6 +7,8 @@ or as freestanding WebAssembly for a browser.
 SarGPU is distributed as one public header plus one unity implementation
 source (`src/sargpu.c`); it is not a header-only library.
 
+![SarGPU example catalog](docs/media/sargpu-demo.gif)
+
 **[Run the example catalog in your browser](https://sargonel.github.io/SarGPU/)**
 
 The web build does **not** use Emscripten, WASI, Node.js, or a package manager.
