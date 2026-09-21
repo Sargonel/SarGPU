@@ -174,15 +174,6 @@ The catalog currently contains:
 - [`examples/lighting_3d.c`](examples/lighting_3d.c): generated meshes, animated
   point and directional lights, fog, and the PBR rendering mode.
 
-Snake controls:
-
-- `WASD` or arrow keys: move
-- `P`: pause
-- `Enter`: restart after losing
-
-Snake uses `assets/font.ttf` when available and falls back to the built-in font
-when it is absent. Its sound effects are generated in C and require no files.
-
 ## Assets
 
 The root `assets/` directory is intentionally ignored by Git. Create it locally
