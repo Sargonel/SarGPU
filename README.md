@@ -152,6 +152,22 @@ The catalog currently contains:
   wireframes, grid drawing, and mouse-ray box picking. Its small GLB model is stored in
   [`examples/assets/example.glb`](examples/assets/example.glb) and is published
   with the online catalog.
+- [`examples/shapes.c`](examples/shapes.c): animated primitives, gradients,
+  outlines, splines, additive blending, and scissor rectangles.
+- [`examples/text_demo.c`](examples/text_demo.c): custom fonts, measurement,
+  rotated text, text utilities, and formatted values with `TextFormat()`.
+- [`examples/images.c`](examples/images.c): generated noise and gradients, CPU
+  image processing, texture upload, filtering, and mipmap generation.
+- [`examples/render_fx.c`](examples/render_fx.c): an offscreen scene processed
+  through a custom WGSL fragment shader with animated uniforms.
+- [`examples/camera_2d.c`](examples/camera_2d.c): panning, zooming, world and
+  screen coordinate conversion, and a large procedural 2D scene.
+- [`examples/audio_demo.c`](examples/audio_demo.c): procedural waves, playback,
+  stereo pan, master volume, and live sound state.
+- [`examples/particles.c`](examples/particles.c): interactive particle emission,
+  motion, bouncing collisions, input, and additive blending.
+- [`examples/lighting_3d.c`](examples/lighting_3d.c): generated meshes, animated
+  point and directional lights, fog, and the PBR rendering mode.
 
 Snake controls:
 

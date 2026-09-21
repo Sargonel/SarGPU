@@ -62,20 +62,23 @@ static const unsigned char mr_font[][7]={
     {17,17,17,17,17,17,14},{17,17,17,17,17,10,4},{17,17,17,21,21,21,10},{17,17,10,4,10,17,17},
     {17,17,10,4,4,4,4},{31,1,2,4,8,16,31},
     {0,0,4,0,4,0,0},{0,0,0,0,0,6,6},{0,0,0,31,0,0,0},{1,2,2,4,8,8,16},
-    {0,4,4,31,4,4,0},{14,17,1,2,4,0,4},{4,4,4,4,4,0,4}
+    {0,4,4,31,4,4,0},{14,17,1,2,4,0,4},{4,4,4,4,4,0,4},
+    {0,0,0,0,6,4,8},{24,25,2,4,8,19,3},{12,18,20,8,21,18,13},
+    {2,4,8,8,8,4,2},{8,4,2,2,2,4,8},{0,0,31,0,31,0,0},
+    {2,4,8,16,8,4,2},{8,4,2,1,2,4,8},{0,0,0,0,0,0,31},
+    {4,4,4,4,4,4,4},{4,4,0,0,0,0,0},{10,31,10,10,31,10,0}
 };
+static int mr_builtin_glyph(unsigned char c){
+    if(c>='a'&&c<='z')c-=32;if(c>='0'&&c<='9')return c-'0';if(c>='A'&&c<='Z')return c-'A'+10;
+    switch(c){case ':':return 36;case '.':return 37;case '-':return 38;case '/':return 39;case '+':return 40;case '!':return 42;case ',':return 43;case '%':return 44;case '&':return 45;case '(':return 46;case ')':return 47;case '=':return 48;case '<':return 49;case '>':return 50;case '_':return 51;case '|':return 52;case '\'':return 53;case '#':return 54;default:return 41;}
+}
 void DrawText(const char *text,int x,int y,int fontSize,Color color) {
     if (!text || fontSize<=0) return;
     float scale=fontSize/7.0f,px=(float)x,py=(float)y;
     for (;*text;text++) {
         unsigned char c=(unsigned char)*text;
         if (c=='\n') { px=(float)x; py+=fontSize+scale*2; continue; }
-        if (c>='a' && c<='z') c-=32;
-        int index=41;
-        if (c>='0' && c<='9') index=c-'0';
-        else if (c>='A' && c<='Z') index=c-'A'+10;
-        else if (c==':') index=36; else if (c=='.') index=37; else if (c=='-') index=38;
-        else if (c=='/') index=39; else if (c=='+') index=40; else if (c=='!') index=42;
+        int index=mr_builtin_glyph(c);
         if (c!=' ') for (int row=0;row<7;row++) for (int col=0;col<5;col++)
             if (mr_font[index][row] & (1<<(4-col))) mr_quad(px+col*scale,py+row*scale,scale,scale,color,mr.white);
         px+=scale*6;
@@ -127,7 +130,7 @@ void UnloadFont(Font font){if(font.glyphCount<=0)return;UnloadTexture(font.textu
 int GetGlyphIndex(Font font,int codepoint){if(!font.glyphs)return 0;int fallback=0;for(int i=0;i<font.glyphCount;i++){if(font.glyphs[i].value==codepoint)return i;if(font.glyphs[i].value=='?')fallback=i;}return fallback;}
 GlyphInfo GetGlyphInfo(Font font,int codepoint){return font.glyphs&&font.glyphCount>0?font.glyphs[GetGlyphIndex(font,codepoint)]:(GlyphInfo){0};}
 Rectangle GetGlyphAtlasRec(Font font,int codepoint){return font.recs&&font.glyphCount>0?font.recs[GetGlyphIndex(font,codepoint)]:(Rectangle){0};}
-static void mr_draw_custom_text(Font font,const char *text,Vector2 position,Vector2 origin,float rotation,float size,float spacing,Color tint){if(!text||!IsFontValid(font)||size<=0)return;if(font.glyphCount==0){DrawText(text,(int)(position.x-origin.x),(int)(position.y-origin.y),(int)size,tint);return;}float scale=size/font.baseSize,x=0,y=0,angle=rotation*MR_DEG2RAD,c=cosf(angle),s=sinf(angle);while(*text){int bytes=0,cp=GetCodepoint(text,&bytes);if(bytes<1)bytes=1;text+=bytes;if(cp=='\n'){x=0;y+=size+(mr_text_line_spacing>0?mr_text_line_spacing:size*.5f);continue;}int index=GetGlyphIndex(font,cp);GlyphInfo glyph=font.glyphs[index];Rectangle src=font.recs[index];float lx=x+glyph.offsetX*scale-origin.x,ly=y+glyph.offsetY*scale-origin.y;Rectangle dst={position.x+lx*c-ly*s,position.y+lx*s+ly*c,src.width*scale,src.height*scale};if(src.width>0&&src.height>0)DrawTexturePro(font.texture,src,dst,(Vector2){0},rotation,tint);x+=(glyph.advanceX?glyph.advanceX:(int)src.width)*scale+spacing;}}
+static void mr_draw_custom_text(Font font,const char *text,Vector2 position,Vector2 origin,float rotation,float size,float spacing,Color tint){if(!text||!IsFontValid(font)||size<=0)return;float angle=rotation*MR_DEG2RAD,c=cosf(angle),s=sinf(angle);if(font.glyphCount==0){float scale=size/7.0f,x=0,y=0;Texture2D white={mr.white,1,1,1,7};while(*text){unsigned char ch=(unsigned char)*text++;if(ch=='\n'){x=0;y+=size+(mr_text_line_spacing>0?mr_text_line_spacing:size*.5f);continue;}int index=mr_builtin_glyph(ch);if(ch!=' ')for(int row=0;row<7;row++)for(int col=0;col<5;col++)if(mr_font[index][row]&(1<<(4-col))){float lx=x+col*scale-origin.x,ly=y+row*scale-origin.y;Rectangle dst={position.x+lx*c-ly*s,position.y+lx*s+ly*c,scale,scale};DrawTexturePro(white,(Rectangle){0,0,1,1},dst,(Vector2){0},rotation,tint);}x+=scale*6+spacing;}return;}float scale=size/font.baseSize,x=0,y=0;while(*text){int bytes=0,cp=GetCodepoint(text,&bytes);if(bytes<1)bytes=1;text+=bytes;if(cp=='\n'){x=0;y+=size+(mr_text_line_spacing>0?mr_text_line_spacing:size*.5f);continue;}int index=GetGlyphIndex(font,cp);GlyphInfo glyph=font.glyphs[index];Rectangle src=font.recs[index];float lx=x+glyph.offsetX*scale-origin.x,ly=y+glyph.offsetY*scale-origin.y;Rectangle dst={position.x+lx*c-ly*s,position.y+lx*s+ly*c,src.width*scale,src.height*scale};if(src.width>0&&src.height>0)DrawTexturePro(font.texture,src,dst,(Vector2){0},rotation,tint);x+=(glyph.advanceX?glyph.advanceX:(int)src.width)*scale+spacing;}}
 void DrawTextEx(Font font,const char *text,Vector2 position,float size,float spacing,Color tint){mr_draw_custom_text(font,text,position,(Vector2){0},0,size,spacing,tint);}
 void DrawTextPro(Font font,const char *text,Vector2 position,Vector2 origin,float rotation,float size,float spacing,Color tint){mr_draw_custom_text(font,text,position,origin,rotation,size,spacing,tint);}
 void DrawTextCodepoint(Font font,int codepoint,Vector2 position,float size,Color tint){int bytes=0;const char*text=CodepointToUTF8(codepoint,&bytes);DrawTextEx(font,text,position,size,0,tint);}
@@ -230,6 +233,63 @@ char *LoadUTF8(const int *codepoints,int length) {
     out[position]=0; return out;
 }
 void UnloadUTF8(char *text) { MemFree(text); }
+#include <stdarg.h>
+
+#define MR_TEXTFORMAT_BUFFERS 4
+#define MR_TEXTFORMAT_BUFFER_SIZE 1024
+static char mr_textformat_buffers[MR_TEXTFORMAT_BUFFERS][MR_TEXTFORMAT_BUFFER_SIZE];
+static int mr_textformat_index;
+
+#if defined(__wasm__)
+static void mr_format_char(char *out,int *length,char value){if(*length<MR_TEXTFORMAT_BUFFER_SIZE-1)out[(*length)++]=value;}
+static void mr_format_repeat(char *out,int *length,char value,int count){while(count-->0)mr_format_char(out,length,value);}
+static int mr_format_unsigned(char *out,unsigned long long value,unsigned int base,bool upper){
+    char reverse[65];int count=0;if(value==0)reverse[count++]='0';
+    while(value&&count<(int)sizeof reverse){unsigned int digit=(unsigned int)(value%base);reverse[count++]=(char)(digit<10?'0'+digit:(upper?'A':'a')+digit-10);value/=base;}
+    for(int i=0;i<count;i++)out[i]=reverse[count-i-1];return count;
+}
+static int mr_format_float(char *out,double value,int precision){
+    int length=0;if(precision<0)precision=6;if(precision>18)precision=18;
+    if(value!=value){out[0]='n';out[1]='a';out[2]='n';return 3;}
+    if(value<0){out[length++]='-';value=-value;}
+    if(value>18446744073709551615.0){out[length++]='i';out[length++]='n';out[length++]='f';return length;}
+    double rounding=0.5;for(int i=0;i<precision;i++)rounding*=0.1;value+=rounding;
+    unsigned long long whole=(unsigned long long)value;char digits[65];int count=mr_format_unsigned(digits,whole,10,false);
+    for(int i=0;i<count;i++)out[length++]=digits[i];
+    if(precision>0){out[length++]='.';double fraction=value-(double)whole;for(int i=0;i<precision;i++){fraction*=10.0;int digit=(int)fraction;if(digit<0)digit=0;if(digit>9)digit=9;out[length++]=(char)('0'+digit);fraction-=digit;}}
+    return length;
+}
+static void mr_web_text_format(char *out,const char *format,va_list args){
+    int length=0;while(format&&*format){if(*format!='%'){mr_format_char(out,&length,*format++);continue;}format++;if(*format=='%'){mr_format_char(out,&length,'%');format++;continue;}
+        bool left=false,plus=false,space=false,zero=false,prefix=false;for(bool flags=true;flags;)switch(*format){case '-':left=true;format++;break;case '+':plus=true;format++;break;case ' ':space=true;format++;break;case '0':zero=true;format++;break;case '#':prefix=true;format++;break;default:flags=false;break;}
+        int width=0;if(*format=='*'){width=va_arg(args,int);format++;if(width<0){left=true;width=-width;}}else while(*format>='0'&&*format<='9')width=width*10+*format++-'0';
+        int precision=-1;if(*format=='.'){format++;precision=0;if(*format=='*'){precision=va_arg(args,int);format++;}else while(*format>='0'&&*format<='9')precision=precision*10+*format++-'0';}
+        int size=0;if(*format=='h'){format++;size=-1;if(*format=='h'){format++;size=-2;}}else if(*format=='l'){format++;size=1;if(*format=='l'){format++;size=2;}}else if(*format=='z'||*format=='t'){format++;size=1;}else if(*format=='j'){format++;size=2;}
+        char type=*format?*format++:0,temp[96];int count=0;const char *valueText=NULL;char sign=0;char prefixText[2];int prefixCount=0;
+        if(type=='s'){valueText=va_arg(args,const char*);if(!valueText)valueText="(null)";count=(int)TextLength(valueText);if(precision>=0&&count>precision)count=precision;}
+        else if(type=='c'){temp[0]=(char)va_arg(args,int);valueText=temp;count=1;}
+        else if(type=='d'||type=='i'){long long value=size>=2?va_arg(args,long long):(size==1?va_arg(args,long):va_arg(args,int));bool negative=value<0;unsigned long long magnitude=negative?(unsigned long long)(-(value+1))+1:(unsigned long long)value;count=mr_format_unsigned(temp,magnitude,10,false);valueText=temp;sign=negative?'-':(plus?'+':(space?' ':0));}
+        else if(type=='u'||type=='x'||type=='X'||type=='o'){unsigned long long value=size>=2?va_arg(args,unsigned long long):(size==1?va_arg(args,unsigned long):va_arg(args,unsigned int));unsigned int base=type=='o'?8:(type=='u'?10:16);count=mr_format_unsigned(temp,value,base,type=='X');valueText=temp;if(prefix&&value){if(base==8){prefixText[0]='0';prefixCount=1;}else if(base==16){prefixText[0]='0';prefixText[1]=type=='X'?'X':'x';prefixCount=2;}}}
+        else if(type=='p'){unsigned long long value=(unsigned long long)(uintptr_t)va_arg(args,void*);count=mr_format_unsigned(temp,value,16,false);valueText=temp;prefixText[0]='0';prefixText[1]='x';prefixCount=2;}
+        else if(type=='f'||type=='F'){count=mr_format_float(temp,va_arg(args,double),precision);valueText=temp;if(temp[0]=='-'){sign='-';valueText++;count--;}else sign=plus?'+':(space?' ':0);}
+        else {mr_format_char(out,&length,'%');if(type)mr_format_char(out,&length,type);continue;}
+        int zeros=0;if(precision>count&&(type!='s'&&type!='c'&&type!='f'&&type!='F'))zeros=precision-count;int total=count+zeros+prefixCount+(sign?1:0);int padding=width>total?width-total:0;
+        if(!left&&!zero)mr_format_repeat(out,&length,' ',padding);if(sign)mr_format_char(out,&length,sign);for(int i=0;i<prefixCount;i++)mr_format_char(out,&length,prefixText[i]);if(!left&&zero)mr_format_repeat(out,&length,'0',padding);mr_format_repeat(out,&length,'0',zeros);for(int i=0;i<count;i++)mr_format_char(out,&length,valueText[i]);if(left)mr_format_repeat(out,&length,' ',padding);
+    }out[length]=0;
+}
+#endif
+
+const char *TextFormat(const char *text,...){
+    char *buffer=mr_textformat_buffers[mr_textformat_index];mr_textformat_index=(mr_textformat_index+1)%MR_TEXTFORMAT_BUFFERS;
+    va_list args;va_start(args,text);
+#if defined(__wasm__)
+    mr_web_text_format(buffer,text,args);
+#else
+    vsnprintf(buffer,MR_TEXTFORMAT_BUFFER_SIZE,text?text:"",args);buffer[MR_TEXTFORMAT_BUFFER_SIZE-1]=0;
+#endif
+    va_end(args);return buffer;
+}
+
 unsigned int TextLength(const char *text) { unsigned int n=0; if (text) while (text[n]) n++; return n; }
 int TextCopy(char *dst,const char *src) { int n=0; if (!dst || !src) return 0; do { dst[n]=src[n]; } while (src[n++]); return n-1; }
 bool TextIsEqual(const char *a,const char *b) { if (!a || !b) return a==b; while (*a && *a==*b) { a++; b++; } return *a==*b; }

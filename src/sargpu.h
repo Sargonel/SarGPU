@@ -590,6 +590,7 @@ int GetCodepointPrevious(const char *text,int *codepointSize);
 const char *CodepointToUTF8(int codepoint,int *utf8Size);
 int TextCopy(char *dst,const char *src);
 bool TextIsEqual(const char *text1,const char *text2);
+const char *TextFormat(const char *text,...);
 unsigned int TextLength(const char *text);
 const char *TextSubtext(const char *text,int position,int length);
 void TextAppend(char *text,const char *append,int *position);
