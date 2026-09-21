@@ -6,10 +6,28 @@
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090e19;color:#cad7eb;font:14px system-ui,sans-serif}
 body{display:grid;place-items:center}
 canvas{display:block;width:auto;height:auto;max-width:100vw;max-height:100vh;outline:none;background:#0e131f}
+canvas[hidden]{display:none}
 #status{position:fixed;left:16px;bottom:12px;max-width:calc(100vw - 32px);white-space:pre-wrap;pointer-events:none;text-shadow:0 1px 3px #000}
+#unsupported{box-sizing:border-box;width:min(620px,calc(100vw - 32px));padding:38px;border:1px solid #334765;border-radius:12px;background:#0e1626;box-shadow:0 24px 70px #0008}
+#unsupported[hidden]{display:none}
+#unsupported h1{margin:0 0 12px;color:#f4f8ff;font-size:32px;line-height:1.1}
+#unsupported p{margin:0 0 18px;color:#afbdd2;font-size:17px;line-height:1.55}
+#unsupported ul{margin:0;padding-left:22px;color:#d6e0ef;font-size:15px;line-height:1.8}
+#unsupported .reason{margin-top:22px;padding:12px 14px;border-left:3px solid #63d7ed;background:#09101c;color:#8fa2bc;font:13px ui-monospace,SFMono-Regular,Consolas,monospace}
 </style></head>
 <body>
 <canvas id="canvas" width="960" height="640" tabindex="0" aria-label="WebGPU demo"></canvas>
 <div id="status">Loading WebGPU...</div>
+<main id="unsupported" role="alert" hidden>
+    <h1>WebGPU is not available</h1>
+    <p>This SarGPU demo needs WebGPU to render. Try these steps, then reload the page:</p>
+    <ul>
+        <li>Update to the latest version of Chrome, Edge, Firefox, or Safari.</li>
+        <li>Make sure hardware acceleration is enabled in your browser.</li>
+        <li>Open the page through HTTPS or localhost.</li>
+    </ul>
+    <div class="reason" id="unsupported-reason"></div>
+</main>
+<noscript>This SarGPU demo requires JavaScript and WebGPU.</noscript>
 <script src="sargpu.js"></script>
 </body></html>

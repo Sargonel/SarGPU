@@ -5,6 +5,8 @@
 (async () => {
     const canvas = document.getElementById("canvas");
     const status = document.getElementById("status");
+    const unsupported = document.getElementById("unsupported");
+    const unsupportedReason = document.getElementById("unsupported-reason");
     const textures = new Map();
     const shaders = new Map();
     const meshes = new Map();
@@ -65,6 +67,14 @@
         close();
         status.textContent = "WebGPU error: " + (error.message || error);
     }
+    function showCompatibilityError(reason) {
+        console.error(reason);
+        close();
+        canvas.hidden = true;
+        status.hidden = true;
+        unsupportedReason.textContent = reason;
+        unsupported.hidden = false;
+    }
     function rebuildShaderTextures(shader) {
         const fallback = textures.values().next().value;
         if (!shader || !fallback || !shaderTextureLayout) return false;
@@ -77,9 +87,15 @@
         return true;
     }
     try {
-        if (!navigator.gpu) throw new Error("WebGPU is unavailable. Use a WebGPU-capable browser on HTTPS or localhost.");
+        if (!navigator.gpu) {
+            showCompatibilityError("This browser did not expose the WebGPU API (navigator.gpu).");
+            return;
+        }
         const adapter = await navigator.gpu.requestAdapter({powerPreference: "high-performance"});
-        if (!adapter) throw new Error("No WebGPU adapter was found.");
+        if (!adapter) {
+            showCompatibilityError("WebGPU is present, but no compatible graphics adapter was found.");
+            return;
+        }
         device = await adapter.requestDevice();
         device.addEventListener("uncapturederror", event => fail(event.error));
         device.lost.then(info => { if (!stopped) fail(new Error("Device lost: " + info.message)); });
