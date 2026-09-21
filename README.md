@@ -4,6 +4,9 @@ SarGPU is an independent, modular 2D/3D C library inspired by raylib and
 built around WebGPU. The same C source can compile as a native Windows program
 or as freestanding WebAssembly for a browser.
 
+SarGPU is distributed as one public header plus one unity implementation
+source (`src/sargpu.c`); it is not a header-only library.
+
 **[Run the example catalog in your browser](https://sargonel.github.io/SarGPU/)**
 
 The web build does **not** use Emscripten, WASI, Node.js, or a package manager.
