@@ -1,5 +1,6 @@
 /* SarGPU core module. Compiled through sargpu.c; do not compile separately. */
 static unsigned int mr_config_flags;
+static bool mr_file_download_enabled;
 static void mr_error(const char *s) { puts(s); mr.error=true; mr.close=true; }
 static void mr_shader_texture_changed(unsigned int textureId,bool removed);
 static void mr_init_3d_defaults(void) {
@@ -627,7 +628,7 @@ static bool mr_renderer(void) {
     /* SetTargetFPS is a software cap, like raylib's default behavior. FIFO
      * already waits for vertical sync; combining both waits can halve 60 to
      * 30 FPS. Prefer Immediate and apply exactly one precise frame limit. */
-    for (size_t i=0;i<caps.presentModeCount;i++) {
+    for (size_t i=0;!(mr.flags&FLAG_VSYNC_HINT)&&i<caps.presentModeCount;i++) {
         if (caps.presentModes[i]==WGPUPresentMode_Immediate) {
             mr.config.presentMode=WGPUPresentMode_Immediate;
             mr.softwareFrameLimit=true;
@@ -830,6 +831,7 @@ bool WindowShouldClose(void) {
     if (mr.dt>0.1f) mr.dt=0.1f;
     return mr.close || !mr.ready;
 }
+void RequestWindowClose(void) { mr.close=true; }
 int GetScreenWidth(void) { return mr.width; }
 int GetScreenHeight(void) { return mr.height; }
 int GetRenderWidth(void) { return mr.width; }
@@ -1103,6 +1105,40 @@ void SetTargetFPS(int fps) {
     mr_web_fps(mr.fps);
 #endif
 }
+void SetVSync(bool enabled) {
+    if (!mr.ready) {
+        if (enabled) mr_config_flags|=FLAG_VSYNC_HINT;
+        else mr_config_flags&=~FLAG_VSYNC_HINT;
+        return;
+    }
+#ifdef _WIN32
+    WGPUPresentMode mode=WGPUPresentMode_Fifo;
+    if (!enabled) {
+        WGPUSurfaceCapabilities caps=WGPU_SURFACE_CAPABILITIES_INIT;
+        if (wgpuSurfaceGetCapabilities(mr.surface,mr.adapter,&caps)==WGPUStatus_Success) {
+            for (size_t i=0;i<caps.presentModeCount;i++) {
+                if (caps.presentModes[i]==WGPUPresentMode_Immediate) { mode=WGPUPresentMode_Immediate; break; }
+            }
+        }
+        wgpuSurfaceCapabilitiesFreeMembers(caps);
+    }
+    if (mr.config.presentMode!=mode) {
+        mr.config.presentMode=mode;
+        mr.config.width=0;
+    }
+    mr.softwareFrameLimit=mode==WGPUPresentMode_Immediate;
+#else
+    (void)enabled; /* requestAnimationFrame is synchronized by the browser. */
+#endif
+}
+bool IsVSyncEnabled(void) {
+    if (!mr.ready) return (mr_config_flags&FLAG_VSYNC_HINT)!=0;
+#ifdef _WIN32
+    return mr.config.presentMode==WGPUPresentMode_Fifo;
+#else
+    return true;
+#endif
+}
 float GetFrameTime(void) { return mr.dt; }
 double GetTime(void) { return mr_clock()-mr.start; }
 int GetFPS(void) { return mr.dt>0.000001f ? (int)(1.0f/mr.dt+0.5f) : 0; }
@@ -1202,7 +1238,7 @@ void UnloadFileData(unsigned char *data) { MemFree(data); }
 bool SaveFileData(const char *fileName,void *data,int dataSize) {
     if (!fileName || !data || dataSize<0) return false;
 #ifdef __wasm__
-    return mr_web_file_write(fileName,data,dataSize)!=0;
+    return mr_web_file_write(fileName,data,dataSize,mr_file_download_enabled)!=0;
 #else
     FILE *file=NULL; if (fopen_s(&file,fileName,"wb")!=0 || !file) return false;
     bool saved=fwrite(data,1,(size_t)dataSize,file)==(size_t)dataSize;
@@ -1210,6 +1246,8 @@ bool SaveFileData(const char *fileName,void *data,int dataSize) {
     return saved;
 #endif
 }
+void SetFileDownloadEnabled(bool enabled) { mr_file_download_enabled=enabled; }
+bool IsFileDownloadEnabled(void) { return mr_file_download_enabled; }
 int GetFileLength(const char *fileName) {
 #ifdef __wasm__
     return fileName ? mr_web_file_size(fileName) : 0;

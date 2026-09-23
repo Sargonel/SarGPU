@@ -135,7 +135,46 @@ void DrawTextEx(Font font,const char *text,Vector2 position,float size,float spa
 void DrawTextPro(Font font,const char *text,Vector2 position,Vector2 origin,float rotation,float size,float spacing,Color tint){mr_draw_custom_text(font,text,position,origin,rotation,size,spacing,tint);}
 void DrawTextCodepoint(Font font,int codepoint,Vector2 position,float size,Color tint){int bytes=0;const char*text=CodepointToUTF8(codepoint,&bytes);DrawTextEx(font,text,position,size,0,tint);}
 void DrawTextCodepoints(Font font,const int*points,int count,Vector2 position,float size,float spacing,Color tint){if(!points)return;float x=position.x;for(int i=0;i<count;i++){DrawTextCodepoint(font,points[i],(Vector2){x,position.y},size,tint);GlyphInfo glyph=GetGlyphInfo(font,points[i]);x+=(glyph.advanceX?glyph.advanceX:font.baseSize)*size/font.baseSize+spacing;}}
-Vector2 MeasureTextEx(Font font,const char*text,float size,float spacing){if(!text||size<=0)return(Vector2){0};if(font.glyphCount==0)return(Vector2){(float)MeasureText(text,(int)size),size};float scale=size/font.baseSize,x=0,maxX=0,y=size;while(*text){int bytes=0,cp=GetCodepoint(text,&bytes);if(bytes<1)bytes=1;text+=bytes;if(cp=='\n'){if(x>maxX)maxX=x;x=0;y+=size+(mr_text_line_spacing>0?mr_text_line_spacing:size*.5f);continue;}GlyphInfo glyph=GetGlyphInfo(font,cp);x+=(glyph.advanceX?glyph.advanceX:font.baseSize)*scale+spacing;}if(x>maxX)maxX=x;if(maxX>0)maxX-=spacing;return(Vector2){maxX,y};}
+Vector2 MeasureTextEx(Font font,const char*text,float size,float spacing){
+    if(!text||size<=0)return(Vector2){0};
+    float scale=size/(font.baseSize>0?font.baseSize:7),x=0,maxX=0,y=size;
+    while(*text){
+        int bytes=1,cp;
+        if(font.glyphCount==0){cp=(unsigned char)*text;text++;}
+        else{cp=GetCodepoint(text,&bytes);if(bytes<1)bytes=1;text+=bytes;}
+        if(cp=='\n'){
+            if(x>0)x-=spacing+(font.glyphCount==0?scale:0);if(x>maxX)maxX=x;x=0;
+            y+=size+(mr_text_line_spacing>0?mr_text_line_spacing:size*.5f);
+            continue;
+        }
+        if(font.glyphCount==0)x+=6.0f*scale+spacing;
+        else{GlyphInfo glyph=GetGlyphInfo(font,cp);x+=(glyph.advanceX?glyph.advanceX:font.baseSize)*scale+spacing;}
+    }
+    if(x>0)x-=spacing+(font.glyphCount==0?scale:0);if(x>maxX)maxX=x;
+    return(Vector2){maxX,y};
+}
+float GetTextFitSize(Font font,const char*text,float size,float spacing,float maxWidth,float maxHeight){
+    if(!text||size<=0||maxWidth<=0||maxHeight<=0)return 0;
+    Vector2 bounds=MeasureTextEx(font,text,size,spacing);
+    if(bounds.x<=maxWidth&&bounds.y<=maxHeight)return size;
+    float low=0,high=size;
+    for(int i=0;i<16;i++){
+        float middle=(low+high)*0.5f;
+        bounds=MeasureTextEx(font,text,middle,spacing);
+        if(bounds.x<=maxWidth&&bounds.y<=maxHeight)low=middle;else high=middle;
+    }
+    return low>0.001f?low:0;
+}
+void DrawTextCentered(Font font,const char*text,Rectangle box,float size,float spacing,float padding,Color tint){
+    if(!text||box.width<=0||box.height<=0||size<=0)return;
+    if(padding<0)padding=0;
+    float availableWidth=box.width-padding*2,availableHeight=box.height-padding*2;
+    float fitted=GetTextFitSize(font,text,size,spacing,availableWidth,availableHeight);
+    if(fitted<=0)return;
+    Vector2 measured=MeasureTextEx(font,text,fitted,spacing);
+    Vector2 position={box.x+(box.width-measured.x)*0.5f,box.y+(box.height-measured.y)*0.5f};
+    DrawTextEx(font,text,position,fitted,spacing,tint);
+}
 void SetTextLineSpacing(int spacing){mr_text_line_spacing=spacing>0?spacing:0;}
 static float mr_clamp01(float value) { return value<0 ? 0 : value>1 ? 1 : value; }
 static unsigned char mr_byte(float value) {

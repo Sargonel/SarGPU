@@ -231,6 +231,15 @@ fn F(c:f32,f0:vec3f)->vec3f{return f0+(vec3f(1)-f0)*pow(1-c,5);}fn D(nh:f32,r:f3
         function loadFile(pointer) {
             const name = readText(pointer);
             if (fileCache.has(name)) return fileCache.get(name);
+            try {
+                const stored = localStorage.getItem(`sargpu:file:${name}`);
+                if (stored) {
+                    const binary = atob(stored), data = new Uint8Array(binary.length);
+                    for (let i = 0; i < binary.length; i++) data[i] = binary.charCodeAt(i);
+                    fileCache.set(name, data);
+                    return data;
+                }
+            } catch (_) {}
             const request = new XMLHttpRequest();
             request.open("GET", name, false);
             /* Browsers forbid setting responseType=arraybuffer on synchronous
@@ -391,18 +400,29 @@ fn F(c:f32,f0:vec3f)->vec3f{return f0+(vec3f(1)-f0)*pow(1-c,5);}fn D(nh:f32,r:f3
                 new Uint8Array(wasm.memory.buffer, destination, size).set(data);
                 return size;
             },
-            file_write: (namePointer, dataPointer, size) => {
+            file_write: (namePointer, dataPointer, size, download) => {
                 if (size < 0) return 0;
                 const name = readText(namePointer) || "download.bin";
                 const data = new Uint8Array(wasm.memory.buffer, dataPointer, size).slice();
-                const url = URL.createObjectURL(new Blob([data], {type: "application/octet-stream"}));
-                const link = document.createElement("a");
-                link.href = url;
-                link.download = name.split(/[\\/]/).pop() || "download.bin";
-                document.body.appendChild(link);
-                link.click();
-                link.remove();
-                setTimeout(() => URL.revokeObjectURL(url), 0);
+                fileCache.set(name, data);
+                try {
+                    let binary = "";
+                    for (let i = 0; i < data.length; i += 0x8000) {
+                        const chunk = data.subarray(i, Math.min(i + 0x8000, data.length));
+                        binary += String.fromCharCode(...chunk);
+                    }
+                    localStorage.setItem(`sargpu:file:${name}`, btoa(binary));
+                } catch (_) {}
+                if (download) {
+                    const url = URL.createObjectURL(new Blob([data], {type: "application/octet-stream"}));
+                    const link = document.createElement("a");
+                    link.href = url;
+                    link.download = name.split(/[\\/]/).pop() || "download.bin";
+                    document.body.appendChild(link);
+                    link.click();
+                    link.remove();
+                    setTimeout(() => URL.revokeObjectURL(url), 0);
+                }
                 return 1;
             },
             screenshot: namePointer => {

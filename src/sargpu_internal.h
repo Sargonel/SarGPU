@@ -53,7 +53,7 @@ MR_IMPORT("close") void mr_web_close(void);
 MR_IMPORT("fps") void mr_web_fps(int fps);
 MR_IMPORT("file_size") int mr_web_file_size(const char *fileName);
 MR_IMPORT("file_read") int mr_web_file_read(const char *fileName,void *data,int size);
-MR_IMPORT("file_write") int mr_web_file_write(const char *fileName,const void *data,int size);
+MR_IMPORT("file_write") int mr_web_file_write(const char *fileName,const void *data,int size,int download);
 MR_IMPORT("screenshot") void mr_web_screenshot(const char *fileName);
 MR_IMPORT("sin") float sinf(float x);
 MR_IMPORT("cos") float cosf(float x);

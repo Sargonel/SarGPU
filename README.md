@@ -339,7 +339,9 @@ LoadImageFromTextureAsync(target.texture, OnReadback, NULL);
   tracks are not expanded into a full PCM copy at load time.
 - Binary/text file loading and saving, path inspection, memory allocation,
   Base64 encoding/decoding, CRC32/MD5/SHA1 hashing, random-number utilities,
-  and common color/text helpers. Browser saves use a normal file download.
+  and common color/text helpers. Browser saves stay in origin-specific local
+  storage by default and are immediately available to the matching load APIs.
+  Call `SetFileDownloadEnabled(true)` to also download subsequent saves.
 - Growable WebAssembly memory: 64 MB initially, up to 2 GB or the browser's
   available limit.
 
