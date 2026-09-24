@@ -113,6 +113,7 @@ void CloseWindow(void) {
     for(int gamepad=0;gamepad<MR_MAX_GAMEPADS;gamepad++)SetGamepadVibration(gamepad,0,0,0);
     mr_discard_readbacks();
     UnloadDroppedFiles(mr.droppedFiles);mr.droppedFiles=(FilePathList){0};MemFree(mr.clipboardText);mr.clipboardText=NULL;
+    MemFree(mr.vertices);MemFree(mr.batches);mr.vertices=NULL;mr.batches=NULL;mr.vertexCapacity=mr.gpuVertexCapacity=mr.batchCapacity=0;
     mr.ready=false; mr.drawing=false; mr.close=true;
     if (mr.surface && mr.config.height) wgpuSurfaceUnconfigure(mr.surface);
     mr.white=0;
@@ -169,6 +170,7 @@ void CloseWindow(void) {
     for(int gamepad=0;gamepad<MR_MAX_GAMEPADS;gamepad++)SetGamepadVibration(gamepad,0,0,0);
     mr_discard_readbacks();
     UnloadDroppedFiles(mr.droppedFiles);mr.droppedFiles=(FilePathList){0};MemFree(mr.clipboardText);mr.clipboardText=NULL;mr_web_drop_clear();
+    MemFree(mr.vertices);MemFree(mr.batches);mr.vertices=NULL;mr.batches=NULL;mr.vertexCapacity=mr.batchCapacity=0;
     mr.ready=false; mr.close=true; mr.drawing=false; mr.white=0;
     for (int i=0;i<MR_MAX_TEXTURES;i++) if (mr.textures[i].id) UnloadTexture((Texture2D){mr.textures[i].id,0,0,0,0});
     for (int i=0;i<32;i++) if (mr.shaders[i].id) UnloadShader((Shader){mr.shaders[i].id,NULL});

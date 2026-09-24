@@ -2,16 +2,17 @@
 static void mr_triangle_colors(Vector2 a,Vector2 b,Vector2 c,Vector2 uvA,Vector2 uvB,Vector2 uvC,
     Color colorA,Color colorB,Color colorC,unsigned int texture) {
     if (!mr.drawing || mr.targetWidth<=0 || mr.targetHeight<=0) return;
-    if (mr.vertexCount+3>MR_MAX_VERTICES) {
-        if (!mr.overflow) puts("sargpu: frame vertex limit reached; remaining geometry skipped");
-        mr.overflow=true; return;
-    }
     unsigned int sx=mr.scissorActive?(unsigned int)(mr.scissor.x<0?0:mr.scissor.x):0;
     unsigned int sy=mr.scissorActive?(unsigned int)(mr.scissor.y<0?0:mr.scissor.y):0;
     unsigned int sw=mr.scissorActive?(unsigned int)(mr.scissor.width<0?0:mr.scissor.width):(unsigned int)mr.targetWidth;
     unsigned int sh=mr.scissorActive?(unsigned int)(mr.scissor.height<0?0:mr.scissor.height):(unsigned int)mr.targetHeight;
     MRBatch *last=mr.batchCount?&mr.batches[mr.batchCount-1]:NULL;
-    if (!last || last->texture!=texture || last->blend!=(unsigned int)mr.blendMode || last->shader!=mr.currentShader || last->x!=sx || last->y!=sy || last->width!=sw || last->height!=sh)
+    bool newBatch=!last||last->texture!=texture||last->blend!=(unsigned int)mr.blendMode||last->shader!=mr.currentShader||last->x!=sx||last->y!=sy||last->width!=sw||last->height!=sh;
+    if (!mr_reserve_frame_geometry(3,newBatch?1:0)) {
+        if (!mr.overflow) puts("sargpu: could not grow frame geometry; remaining geometry skipped");
+        mr.overflow=true; return;
+    }
+    if (newBatch)
         mr.batches[mr.batchCount++]=(MRBatch){mr.vertexCount,0,texture,(unsigned int)mr.blendMode,mr.currentShader,sx,sy,sw,sh};
     mr.batches[mr.batchCount-1].count+=3;
     Vector2 p[3]={a,b,c},uv[3]={uvA,uvB,uvC}; Color colors[3]={colorA,colorB,colorC};

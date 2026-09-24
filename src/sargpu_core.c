@@ -3,6 +3,33 @@ static unsigned int mr_config_flags;
 static bool mr_file_download_enabled;
 static void mr_error(const char *s) { puts(s); mr.error=true; mr.close=true; }
 static void mr_shader_texture_changed(unsigned int textureId,bool removed);
+static bool mr_reserve_frame_geometry(unsigned int vertices,unsigned int batches) {
+    if(vertices>0x7fffffffu-mr.vertexCount||batches>0x7fffffffu-mr.batchCount)return false;
+    unsigned int requiredVertices=mr.vertexCount+vertices,requiredBatches=mr.batchCount+batches;
+    if(requiredVertices>mr.vertexCapacity){
+        unsigned int capacity=mr.vertexCapacity?mr.vertexCapacity:MR_INITIAL_VERTICES;
+        while(capacity<requiredVertices){if(capacity>0x7fffffffu/2){capacity=requiredVertices;break;}capacity*=2;}
+        if(capacity>0xffffffffu/sizeof(MRVertex))return false;
+        MRVertex *grown=MemRealloc(mr.vertices,capacity*(unsigned int)sizeof(MRVertex));
+        if(!grown)return false;mr.vertices=grown;mr.vertexCapacity=capacity;
+    }
+    if(requiredBatches>mr.batchCapacity){
+        unsigned int capacity=mr.batchCapacity?mr.batchCapacity:(MR_INITIAL_VERTICES/3);
+        while(capacity<requiredBatches){if(capacity>0x7fffffffu/2){capacity=requiredBatches;break;}capacity*=2;}
+        if(capacity>0xffffffffu/sizeof(MRBatch))return false;
+        MRBatch *grown=MemRealloc(mr.batches,capacity*(unsigned int)sizeof(MRBatch));
+        if(!grown)return false;mr.batches=grown;mr.batchCapacity=capacity;
+    }
+#ifdef _WIN32
+    if(mr.device&&mr.gpuVertexCapacity<mr.vertexCapacity){
+        WGPUBufferDescriptor descriptor=WGPU_BUFFER_DESCRIPTOR_INIT;
+        descriptor.size=(uint64_t)mr.vertexCapacity*sizeof(MRVertex);descriptor.usage=WGPUBufferUsage_Vertex|WGPUBufferUsage_CopyDst;
+        WGPUBuffer grown=wgpuDeviceCreateBuffer(mr.device,&descriptor);if(!grown)return false;
+        if(mr.buffer)wgpuBufferRelease(mr.buffer);mr.buffer=grown;mr.gpuVertexCapacity=mr.vertexCapacity;
+    }
+#endif
+    return true;
+}
 static void mr_init_3d_defaults(void) {
     mr.ambientColor=WHITE;mr.ambientIntensity=0.22f;mr.pbrEnabled=true;
     mr.fogColor=(Color){128,140,155,255};mr.fogStart=10;mr.fogEnd=100;mr.fogDensity=0.02f;mr.fogMode=FOG_DISABLED;
@@ -720,9 +747,8 @@ static bool mr_renderer(void) {
     const char *skyWgsl="struct Scene{vp:mat4x4f,camera:vec4f,ambient:vec4f,fogColor:vec4f,fog:vec4f,skyRight:vec4f,skyUp:vec4f,skyForward:vec4f,settings:vec4f};struct O{@builtin(position)p:vec4f,@location(0)ray:vec3f};@group(0)@binding(0)var smp:sampler;@group(0)@binding(1)var tex:texture_2d<f32>;@group(1)@binding(0)var<uniform>scene:Scene;@vertex fn vs(@builtin(vertex_index)i:u32)->O{let x=f32((i<<1u)&2u);let y=f32(i&2u);let q=vec2f(x*2-1,1-y*2);var o:O;o.p=vec4f(q,1,1);o.ray=normalize(scene.skyForward.xyz+q.x*scene.skyRight.xyz*scene.skyRight.w*scene.skyUp.w+q.y*scene.skyUp.xyz*scene.skyUp.w);return o;}@fragment fn fs(o:O)->@location(0)vec4f{let d=normalize(o.ray);let uv=vec2f(atan2(d.z,d.x)/(6.2831853)+0.5,acos(clamp(d.y,-1,1))/3.14159265);return textureSample(tex,smp,uv)*vec4f(scene.settings.yzw,1);}";WGPUShaderSourceWGSL skySource=WGPU_SHADER_SOURCE_WGSL_INIT;skySource.code=mr_string(skyWgsl);WGPUShaderModuleDescriptor skyDesc=WGPU_SHADER_MODULE_DESCRIPTOR_INIT;skyDesc.nextInChain=&skySource.chain;WGPUShaderModule skyShader=wgpuDeviceCreateShaderModule(mr.device,&skyDesc);WGPUBindGroupLayout skyLayouts[2]={mr.textureLayout,mr.sceneLayout3d};WGPUPipelineLayoutDescriptor skyLayoutDesc=WGPU_PIPELINE_LAYOUT_DESCRIPTOR_INIT;skyLayoutDesc.bindGroupLayoutCount=2;skyLayoutDesc.bindGroupLayouts=skyLayouts;WGPUPipelineLayout skyLayout=wgpuDeviceCreatePipelineLayout(mr.device,&skyLayoutDesc);WGPUFragmentState skyFragment=WGPU_FRAGMENT_STATE_INIT;skyFragment.module=skyShader;skyFragment.entryPoint=mr_string("fs");skyFragment.targetCount=1;skyFragment.targets=&target3d;WGPUDepthStencilState skyDepth=depth;skyDepth.depthWriteEnabled=WGPUOptionalBool_False;WGPURenderPipelineDescriptor skyPipeline=WGPU_RENDER_PIPELINE_DESCRIPTOR_INIT;skyPipeline.layout=skyLayout;skyPipeline.vertex.module=skyShader;skyPipeline.vertex.entryPoint=mr_string("vs");skyPipeline.fragment=&skyFragment;skyPipeline.primitive.topology=WGPUPrimitiveTopology_TriangleList;skyPipeline.depthStencil=&skyDepth;mr.skyboxPipeline=wgpuDeviceCreateRenderPipeline(mr.device,&skyPipeline);wgpuPipelineLayoutRelease(skyLayout);wgpuShaderModuleRelease(skyShader);
     wgpuShaderModuleRelease(shader3d);
     wgpuShaderModuleRelease(shader); wgpuPipelineLayoutRelease(pipelineLayout);
-    WGPUBufferDescriptor buffer=WGPU_BUFFER_DESCRIPTOR_INIT;
-    buffer.size=sizeof mr.vertices; buffer.usage=WGPUBufferUsage_Vertex|WGPUBufferUsage_CopyDst;
-    mr.buffer=wgpuDeviceCreateBuffer(mr.device,&buffer);
+    if(!mr_reserve_frame_geometry(MR_INITIAL_VERTICES,MR_INITIAL_VERTICES/3))return false;
+    WGPUBufferDescriptor buffer=WGPU_BUFFER_DESCRIPTOR_INIT;buffer.usage=WGPUBufferUsage_Vertex|WGPUBufferUsage_CopyDst;
     buffer.size=sizeof mr.instances3d;mr.instanceBuffer3d=wgpuDeviceCreateBuffer(mr.device,&buffer);
     WGPUBufferDescriptor sceneBuffer=WGPU_BUFFER_DESCRIPTOR_INIT;sceneBuffer.size=sizeof(MRScene3D);sceneBuffer.usage=WGPUBufferUsage_Uniform|WGPUBufferUsage_CopyDst;mr.sceneBuffer3d=wgpuDeviceCreateBuffer(mr.device,&sceneBuffer);sceneBuffer.size=sizeof mr.boneMatricesFrame;sceneBuffer.usage=WGPUBufferUsage_Storage|WGPUBufferUsage_CopyDst;mr.boneBuffer3d=wgpuDeviceCreateBuffer(mr.device,&sceneBuffer);
     WGPUBindGroupEntry sceneGroupEntries[2]={WGPU_BIND_GROUP_ENTRY_INIT,WGPU_BIND_GROUP_ENTRY_INIT};sceneGroupEntries[0].binding=0;sceneGroupEntries[0].buffer=mr.sceneBuffer3d;sceneGroupEntries[0].size=sizeof(MRScene3D);sceneGroupEntries[1].binding=1;sceneGroupEntries[1].buffer=mr.boneBuffer3d;sceneGroupEntries[1].size=sizeof mr.boneMatricesFrame;WGPUBindGroupDescriptor sceneGroupDesc=WGPU_BIND_GROUP_DESCRIPTOR_INIT;sceneGroupDesc.layout=mr.sceneLayout3d;sceneGroupDesc.entryCount=2;sceneGroupDesc.entries=sceneGroupEntries;mr.sceneGroup3d=wgpuDeviceCreateBindGroup(mr.device,&sceneGroupDesc);
@@ -816,6 +842,7 @@ void InitWindow(int width,int height,const char *title) {
     if (width<=0 || height<=0 || width>8192 || height>8192) { mr_error("Invalid window size"); return; }
     mr.width=width; mr.height=height; mr.start=mr.previous=mr_clock();
     mr_web_init(width,height,title); mr_web_window_command(7,(int)mr.flags,0,NULL); mr.ready=true;
+    if(!mr_reserve_frame_geometry(MR_INITIAL_VERTICES,MR_INITIAL_VERTICES/3)){mr_error("Cannot allocate frame geometry");CloseWindow();return;}
     const unsigned char white[4]={255,255,255,255}; mr.white=LoadTextureRGBA(white,1,1).id;
     mr.shapesTexture=(Texture2D){mr.white,1,1,1,7}; mr.shapesSource=(Rectangle){0,0,1,1};
     puts("sargpu: WebGPU renderer ready");

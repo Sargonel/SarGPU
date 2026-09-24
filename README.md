@@ -503,7 +503,7 @@ always renders it behind the geometry.
   Unicode coverage.
 - SarGPU supports 256 simultaneous texture slots, 32 custom shaders, eight
   material samplers, eight scene lights, 16,384 bone matrices per frame, and
-  262,144 vertices per frame.
+  a growable per-frame vertex buffer that starts at 262,144 vertices.
 
 ## License
 

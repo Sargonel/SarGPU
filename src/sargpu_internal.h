@@ -124,7 +124,7 @@ static int puts(const char *s) { mr_log(s); return 0; }
 #error "sargpu currently supports Windows and wasm32."
 #endif
 
-#define MR_MAX_VERTICES 262144
+#define MR_INITIAL_VERTICES 262144
 #define MR_MAX_TEXTURES 256
 #define MR_MAX_MESHES 1024
 #define MR_MAX_3D_DRAWS 4096
@@ -197,10 +197,10 @@ static struct {
     MRTexture textures[MR_MAX_TEXTURES]; unsigned int nextTexture,white;
     MRMeshEntry meshes[MR_MAX_MESHES]; unsigned int nextMesh;
     MRShaderEntry shaders[32]; unsigned int nextShader,currentShader;
-    MRVertex vertices[MR_MAX_VERTICES]; MRBatch batches[MR_MAX_VERTICES/3];
+    MRVertex *vertices; MRBatch *batches;
     MRDraw3D draws3d[MR_MAX_3D_DRAWS]; MRInstance3D instances3d[MR_MAX_3D_INSTANCES];
     MRScene3D scene3d; Matrix boneMatricesFrame[MR_MAX_BONE_MATRICES_FRAME];
-    unsigned int vertexCount,batchCount,drawCount3d,instanceCount3d,boneMatrixCount3d,skyboxTexture; Color skyboxTint;
+    unsigned int vertexCount,vertexCapacity,gpuVertexCapacity,batchCount,batchCapacity,drawCount3d,instanceCount3d,boneMatrixCount3d,skyboxTexture; Color skyboxTint;
     Light3D lights[SARGPU_MAX_LIGHTS]; Color ambientColor,fogColor; float ambientIntensity,fogStart,fogEnd,fogDensity; int fogMode; bool pbrEnabled;
     bool ready,close,error,drawing,adapterDone,deviceDone,overflow,softwareFrameLimit,resized,focused;
     bool keys[512],pressed[512],repeated[512],released[512];

@@ -52,11 +52,12 @@ void SetPBRMode(bool enabled){mr.pbrEnabled=enabled;}
 bool IsPBRModeEnabled(void){return mr.pbrEnabled;}
 void DrawSkybox(Texture2D panorama,Color tint){if(mr.drawing&&mr.camera3dActive&&IsTextureValid(panorama)){mr.skyboxTexture=panorama.id;mr.skyboxTint=tint;}}
 static bool mr_batch_room(unsigned int texture){
-    if(!mr.drawing||mr.vertexCount+3>MR_MAX_VERTICES)return false;
+    if(!mr.drawing)return false;
     unsigned int sx=mr.scissorActive?(unsigned int)(mr.scissor.x<0?0:mr.scissor.x):0,sy=mr.scissorActive?(unsigned int)(mr.scissor.y<0?0:mr.scissor.y):0;
     unsigned int sw=mr.scissorActive?(unsigned int)(mr.scissor.width<0?0:mr.scissor.width):(unsigned int)mr.targetWidth,sh=mr.scissorActive?(unsigned int)(mr.scissor.height<0?0:mr.scissor.height):(unsigned int)mr.targetHeight;
-    MRBatch *last=mr.batchCount?&mr.batches[mr.batchCount-1]:NULL;
-    if(!last||last->texture!=texture||last->blend!=(unsigned int)mr.blendMode||last->shader!=mr.currentShader||last->x!=sx||last->y!=sy||last->width!=sw||last->height!=sh)mr.batches[mr.batchCount++]=(MRBatch){mr.vertexCount,0,texture,(unsigned int)mr.blendMode,mr.currentShader,sx,sy,sw,sh};
+    MRBatch *last=mr.batchCount?&mr.batches[mr.batchCount-1]:NULL;bool newBatch=!last||last->texture!=texture||last->blend!=(unsigned int)mr.blendMode||last->shader!=mr.currentShader||last->x!=sx||last->y!=sy||last->width!=sw||last->height!=sh;
+    if(!mr_reserve_frame_geometry(3,newBatch?1:0)){if(!mr.overflow)puts("sargpu: could not grow frame geometry; remaining geometry skipped");mr.overflow=true;return false;}
+    if(newBatch)mr.batches[mr.batchCount++]=(MRBatch){mr.vertexCount,0,texture,(unsigned int)mr.blendMode,mr.currentShader,sx,sy,sw,sh};
     mr.batches[mr.batchCount-1].count+=3;return true;
 }
 static void mr_projected_triangle_uv(MRProjected3D a,MRProjected3D b,MRProjected3D c,

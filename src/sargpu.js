@@ -11,7 +11,7 @@
     const shaders = new Map();
     const meshes = new Map();
     const events = new AbortController();
-    let device, context, buffer, instanceBuffer3d, sceneBuffer3d, boneBuffer3d, sceneGroup3d, defaultUniformBuffer3d, defaultUniformGroup3d, wasm, pipelines, pipeline3d, skyboxPipeline, sampler, textureLayout, uniformLayout, shaderTextureLayout, sceneLayout3d, defaultPipelineLayout, pipelineLayout, materialPipelineLayout, audioContext, masterGain;
+    let device, context, buffer, bufferCapacity=0, instanceBuffer3d, sceneBuffer3d, boneBuffer3d, sceneGroup3d, defaultUniformBuffer3d, defaultUniformGroup3d, wasm, pipelines, pipeline3d, skyboxPipeline, sampler, textureLayout, uniformLayout, shaderTextureLayout, sceneLayout3d, defaultPipelineLayout, pipelineLayout, materialPipelineLayout, audioContext, masterGain;
     let depthTexture, depthWidth=0, depthHeight=0;
     const sounds = new Map();
     let stopped = false, targetFPS = 60, lastFrame, fullscreenPending = 0, fullscreenMode = 0;
@@ -146,7 +146,8 @@
             primitive:{topology:"triangle-list",cullMode:"none"},
             depthStencil:{format:"depth24plus",depthWriteEnabled:true,depthCompare:"less-equal"}});
         pipelines = await Promise.all(blendStates.map(blend => device.createRenderPipelineAsync(pipelineDescriptor(blend))));
-        buffer = device.createBuffer({size: 262144 * 24, usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST});
+        bufferCapacity=262144;
+        buffer = device.createBuffer({size: bufferCapacity * 24, usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST});
         const shader3d = device.createShaderModule({code: `
             struct V { @builtin(position) position: vec4f, @location(0) uv: vec2f, @location(1) color: vec4f,
                 @location(2) normal: vec3f, @location(3) world: vec3f, @location(4) camera: vec3f };
@@ -598,6 +599,7 @@ fn F(c:f32,f0:vec3f)->vec3f{return f0+(vec3f(1)-f0)*pow(1-c,5);}fn D(nh:f32,r:f3
                     }
                 }
                 if (count) {
+                    if(count>bufferCapacity){let capacity=bufferCapacity;while(capacity<count)capacity*=2;const grown=device.createBuffer({size:capacity*24,usage:GPUBufferUsage.VERTEX|GPUBufferUsage.COPY_DST});buffer.destroy();buffer=grown;bufferCapacity=capacity;}
                     device.queue.writeBuffer(buffer, 0, new Uint8Array(wasm.memory.buffer, vertices, count*24));
                     pass.setVertexBuffer(0, buffer, 0, count*24);
                     const commands = new Uint32Array(wasm.memory.buffer, batches, batchCount*9);
